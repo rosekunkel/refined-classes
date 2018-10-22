@@ -1,0 +1,113 @@
+indexvar n ::=
+
+metavar x ::=
+metavar a ::= {{ tex \alpha }}
+metavar c ::= {{ tex \chi }}
+
+grammar
+e :: 'e_' ::=
+  | x :: :: Var
+  | e e' :: :: App
+  | \ x . e :: :: Lam {{ tex \lambda [[x]] . [[e]] }}
+  | let x = e in e' :: :: Let
+  | over x : s in e' :: :: Over
+  | inst x : s = e in e' :: :: Inst
+  | ( e ) :: :: Parens
+
+t {{ tex \tau }} :: 't_' ::=
+  | t -> t' :: :: Arr
+  | a :: :: Var
+  | c ( t1 .. tn ) :: :: Con
+  | ( t ) :: :: Parens
+
+p {{ tex \rho }} :: 'p_' ::=
+  | ( x : t ) => p :: :: Pred
+  | t :: :: Type
+  | ( p ) :: :: Parens
+
+s {{ tex \sigma }} :: 's_' ::=
+  | forall a . s :: :: Univ
+  | p :: :: Pred
+  | s [ a := t ] :: M :: Subst
+  | ( s ) :: :: Parens
+
+g :: 'g_' ::=
+  | ( x : s ~> x' ) :: :: Abs
+  | ( x :i s ~> x' ) :: :: Inst
+  | ( x :o s ) :: :: Over
+
+G {{ tex \Gamma }} :: 'G_' ::=
+  | empty :: :: Emp {{ tex \cdot }}
+  | G , g :: :: Cons
+  | ( remove x from G ) :: M :: Rem {{ tex {[[G]]}_{[[x]]} }}
+
+terminals :: 'terminals_' ::=
+  | |- :: :: turnstile {{ tex \vdash }}
+  | -> :: :: arrow {{ tex \rightarrow }}
+  | => :: :: imp {{ tex \Rightarrow }}
+  | forall :: :: forall {{ tex \forall }}
+  | :i :: :: inst {{ tex :_i }}
+  | :o :: :: over {{ tex :_o }}
+  | empty :: :: empty {{ tex \cdot }}
+  | ~> :: :: translates {{ tex \rightsquigarrow }}
+
+defns
+TypeTransJudge :: '' ::=
+  defn
+  a not free in G :: :: FV :: '' {{ tex [[a]] \text{ not free in } [[G]] }} by
+
+  defn
+  G contains g :: :: contains :: '' {{ tex [[g]] \in [[G]] }} by
+
+  defn
+  G |- e : s ~> e' :: :: reduce :: '' by
+
+    ---------------------------- :: TAUT1
+    G , ( x : s ~> x' ) |- x : s ~> x'
+
+    ----------------------------- :: TAUT2
+    G , ( x :i s ~> x' ) |- x : s ~> x'
+
+    G |- e : forall a . s ~> e'
+    --------------------------- :: SPEC
+    G |- e : s [ a := t ] ~> e'
+
+    G |- e : s ~> e'
+    a not free in G
+    --------------------------- :: GEN
+    G |- e : forall a . s ~> e'
+
+    G |- e1 : ( t0 -> t1 ) ~> e1'
+    G |- e0 : t0 ~> e0'
+    ---------------------------------- :: COMB
+    G |- ( e1 e0 ) : t1 ~> ( e1' e0' )
+
+    ( remove x from G ) , ( x : t0 ~> x ) |- e : t1 ~> e'
+    ------------------------------------------------- :: ABS
+    G |- \ x . e : ( t0 -> t1 ) ~> \ x . e'
+
+    G |- e0 : s ~> e0'
+    ( remove x from G ) , ( x : s ~> x ) |- e1 : t ~> e1'
+    ----------------------------------------------- :: LET
+    G |- ( let x = e0 in e1 ) : t ~> let x = e0' in e1'
+
+    G , ( x : t ~> x' ) |- e : p ~> e'
+    G contains ( x :o s )
+    ------------------------------------- :: PRED
+    G |- e : ( x : t ) => p ~> \ x' . e'
+
+    G |- e0 : ( x : t ) => p ~> e0'
+    G |- x : t ~> e1'
+    G contains ( x :o s )
+    ------------------------------- :: REL
+    G |- e0 : p ~> e0' e1'
+
+    ( remove x from G ) , ( x :o s ) |- e : t ~> e'
+    ----------------------------------------------- :: OVER
+    G |- ( over x : s in e ) : t ~> e'
+
+    G , ( x :i s ~> x' ) |- e0 : s ~> e0'
+    G , ( x :i s ~> x' ) |- e1 : t ~> e1'
+    G contains ( x :o s' )
+    --------------------------------------------------------- :: INST
+    G |- ( inst x : s = e0 in e1 ) : t ~> let x' = e0' in e1'
